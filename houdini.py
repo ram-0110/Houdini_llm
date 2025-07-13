@@ -105,8 +105,16 @@ node_data = export_node_structure(hou.node("/obj/geo1/box1"))
 
 response = requests.post(
     "http://localhost:8000/receive-houdini-data",
-    json=node_data  # DO NOT use data=
+    json=node_data  
 )
 
-print(response.status_code)
-print(response.text)
+ed_data=response.json()
+ed_data=ed_data['data']
+print("----------------------------------------------------------------")
+
+
+
+apply_node_structure(ed_data)
+
+
+

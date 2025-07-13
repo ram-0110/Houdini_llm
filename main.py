@@ -106,3 +106,6 @@ async def receive_data(request: Request):
     return {
         "data": result['data']
     }
+
+
+#this is awsomeeee
