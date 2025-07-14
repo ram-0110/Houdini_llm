@@ -23,7 +23,6 @@ def export_node_structure(node):
         "inputs": [input_node.path() if input_node else None for input_node in node.inputs()],
         "outputs": [output.path() for output in node.outputs()],
         "parameters": {},
-        "parmTemplates": [],
         "children": [child.path() for child in node.children()]
     }
 
@@ -34,14 +33,6 @@ def export_node_structure(node):
         except:
             pass
 
-    ptg = node.parmTemplateGroup()
-    for pt in ptg.parmTemplates():
-        data["parmTemplates"].append({
-            "name": pt.name(),
-            "label": pt.label(),
-            "type": pt.type().name(),
-            "default": safe_default(pt.defaultValue())
-        })
 
     return data
 

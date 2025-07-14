@@ -9,11 +9,18 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 import json
+from langchain_neo4j import GraphCypherQAChain
+from langchain.chat_models import init_chat_model
+from langchain_neo4j import Neo4jGraph
 
 #------------------------------------------------------------------------------------
 load_dotenv()
 driver = GraphDatabase.driver("neo4j://127.0.0.1:7687", auth=("neo4j", "Rumbling@1990"))
-
+graph = Neo4jGraph(
+    url='neo4j://127.0.0.1:7687',
+    username="neo4j", 
+    password="Rumbling@1990",
+)
 
 def create_graph_with_parameters(nodes_data):
     nodes_data = [nodes_data]  # wrap in list
@@ -100,6 +107,18 @@ with open("prompt.txt", "r", encoding="utf-8") as file:
 
 
 model = ChatOpenAI(model="gpt-4o-mini-2024-07-18", temperature=0)
+cypher_model = init_chat_model(
+    "gpt-4o", 
+    model_provider="openai",
+    temperature=0.0
+)
+
+cypher_qa = GraphCypherQAChain.from_llm(
+    graph=graph, 
+    llm=model, 
+    allow_dangerous_requests=True,
+    verbose=True, 
+)
 
 
 
@@ -129,10 +148,10 @@ def process_houdini_node(state: State) -> State:
         {houdini_json}
 
         Instructions:
-        Set the scale to 5. Set rz to 0.Set ry to 45.
+        Set the scale to 1. Set rz to 20.Set ry to 15.
     """
-
-
+    response = cypher_qa.invoke(input={"query": "Set the scale to 5. Set rz to 90. Set ry to 10."})
+    print(response)
     
     state["messages"]=[HumanMessage(human_prompt)]
     
@@ -164,8 +183,7 @@ async def receive_data(request: Request):
         data=data
     )
     result = graph.invoke(invoke_data)
-    create_graph_with_parameters(result['data'])
-    print(data,result['data'])
+    # create_graph_with_parameters(result['data'])
     return {
         "data": result['data']
     }
