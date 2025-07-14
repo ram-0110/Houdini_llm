@@ -28,10 +28,6 @@ Response:
     "rebar": 1,
     ...
   },
-  "parmTemplates": [
-    { "name": "surftype", ..., "default": 5 },
-    { "name": "rebar", ..., "default": true }
-  ],
   ...
 }
 </example>
