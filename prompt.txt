@@ -4,7 +4,7 @@ The user will provide you with a JSON data table in the following format along w
 
 Your job is to **edit the data values** according to the instructions and return the **full modified JSON** back.
 
-⚠️ DO NOT include:
+DO NOT include:
 - Code blocks like ```json
 - Output: labels
 - Explanations or summaries
