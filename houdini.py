@@ -1,111 +1,82 @@
 import hou
-import requests
 import json
+import pprint
 
+#-------------------------------------------------------------------------------
 
-def safe_default(val):
-    try:
-        if isinstance(val, (tuple, list)):
-            return [safe_default(v) for v in val]
-        elif isinstance(val, (int, float, str, bool)) or val is None:
-            return val
-        else:
-            return str(val)
-    except:
-        return str(val)
-
-def export_node_structure(node):
-    data = {
-        "name": node.name(),
-        "path": node.path(),
-        "type": node.type().name(),
-        "parent": node.parent().path() if node.parent() else None,
-        "inputs": [input_node.path() if input_node else None for input_node in node.inputs()],
-        "outputs": [output.path() for output in node.outputs()],
-        "parameters": {},
-        "children": [child.path() for child in node.children()]
-    }
-
-    for parm in node.parms():
-        try:
-            value = parm.eval()
-            data["parameters"][parm.name()] = safe_default(value)
-        except:
-            pass
-
-
+def extract_nodes():
+    obj=hou.node('/obj')
+    children=obj.children()
+    data=[]
+    for node in children:
+        for child_node in node.children():
+            temp={}
+            temp['name']=child_node.name()
+            temp['type']=child_node.type().name()
+            temp['path']=child_node.path()
+            temp['inputs']=[]
+            inputs = child_node.inputs()
+            
+            for idx, input_node in enumerate(inputs):
+                temp1={}
+                if input_node:
+                    temp1['index']=idx
+                    temp1['path']=input_node.path()
+                    temp['inputs'].append(temp1)
+                else:
+                    print(f"Input {idx}: None")
+                    
+            parm=child_node.parms()
+            temp2={}
+            for p in parm:
+                temp2[p.name()]=p.eval()
+            temp['parameters']=temp2
+            data.append(temp)
     return data
 
+#-------------------------------------------------------------------------------
+def create_node_parm(data):
+     geo_node = hou.node("/obj/geo1")
+     for item in data:
+        node_cr=geo_node.createNode(item['type'],item['name'])
+        for param_name, param_value in item["parameters"].items():
+            node_cr.parm(param_name).set(param_value)
 
-def apply_node_structure(data):
-    node_path = data["path"]
-    parent_path = data["parent"]
-    node_name = data["name"]
-    node_type = data["type"]
 
-    # Get or create parent node
-    parent = hou.node(parent_path)
-    if not parent:
-        raise ValueError(f"Parent node '{parent_path}' does not exist")
-
-    # Get or create the node
-    node = hou.node(node_path)
-    if not node:
-        node = parent.createNode(node_type, node_name)
-
-    # Set parameters
-    for parm_name, value in data.get("parameters", {}).items():
-        parm = node.parm(parm_name)
-        if parm is not None:
-            try:
-                parm.set(value)
-            except Exception as e:
-                print(f"Could not set parameter '{parm_name}': {e}")
-        else:
-            print(f"Parameter '{parm_name}' not found on node '{node_path}'")
-
-    # Connect inputs
-    inputs = data.get("inputs", [])
-    for i, input_path in enumerate(inputs):
-        if input_path:
-            input_node = hou.node(input_path)
-            if input_node:
-                node.setInput(i, input_node)
+def create_graph(data):
+    geo_node = hou.node("/obj/geo1")
+    create_node_parm(data)
+    for item in data:
+        node_cr=hou.node(item['path'])
+        for inp in item['inputs']:
+            sub_node=hou.node(inp['path'])
+            if sub_node is None:
+                print(f"ERROR: Could not find node at path: {inp['path']}")
             else:
-                print(f"Input node '{input_path}' not found")
+                node_cr.setInput(inp['index'],sub_node)
 
-    # Optional: display flags, color, comment, etc.
-    if data.get("displayFlag", False):
-        node.setDisplayFlag(True)
-
-    if "color" in data:
-        color = hou.Color(data["color"])
-        node.setColor(color)
-
-    if "comment" in data:
-        node.setComment(data["comment"])
-
-    return node
+#-------------------------------------------------------------------------------
 
 
-node=hou.node('/obj/geo1/box1')
-data=export_node_structure(node)
-print(json.dumps(data, indent=2))
-node_data = export_node_structure(hou.node("/obj/geo1/box1"))
+# data=extract_nodes()
+# print(json.dumps(data, indent=2))
 
+
+#-------------------------------------------------------------------------------
+
+
+
+
+import requests
+
+
+prompt = "Tea cup"
 
 response = requests.post(
     "http://localhost:8000/receive-houdini-data",
-    json=node_data  
+    json={"nodes": prompt}
 )
 
-ed_data=response.json()
-ed_data=ed_data['data']
-print("----------------------------------------------------------------")
 
-
-
-apply_node_structure(ed_data)
-
-
-
+edited_nodes_data = response.json().get("data", [])
+create_graph(edited_nodes_data)
